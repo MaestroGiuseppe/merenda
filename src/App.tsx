@@ -29,7 +29,8 @@ const SUPABASE_ANON_KEY = "";
 // --- MOCK CLIENT (PER L'ANTEPRIMA QUI O FALLBACK) ---
 // Se le chiavi non ci sono (es. anteprima), usa questo finto database.
 class MockSupabaseClient {
-  data = { classes: [], students: [] };
+  data: any = { classes: [], students: [] };
+  
   constructor() {
     const classId = 'mock-class-id';
     this.data.classes = [{ id: classId, name: 'Classe Prova', password_sequence: ['apple', 'star', 'car'] }];
@@ -38,33 +39,35 @@ class MockSupabaseClient {
       { id: '2', class_id: classId, name: 'Lucia', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lucia', total_points: 8, last_check_date: '' }
     ];
   }
-  from(table) {
+  
+  from(table: string) {
     return {
       select: () => Promise.resolve({ data: this.data[table] || [], error: null }),
-      insert: (rows) => {
+      insert: (rows: any[]) => {
         const newRows = rows.map(r => ({ ...r, id: Math.random().toString(36).substr(2, 9) }));
         if(!this.data[table]) this.data[table] = [];
         this.data[table].push(...newRows);
         return Promise.resolve({ data: newRows, error: null });
       },
-      update: (updates) => ({
-        eq: (col, val) => {
+      update: (updates: any) => ({
+        eq: (col: string, val: any) => {
           if(this.data[table]) {
-            this.data[table] = this.data[table].map(r => r[col] === val ? { ...r, ...updates } : r);
+            this.data[table] = this.data[table].map((r: any) => r[col] === val ? { ...r, ...updates } : r);
           }
           return Promise.resolve({ data: [], error: null });
         }
       }),
       delete: () => ({
-        eq: (col, val) => {
+        eq: (col: string, val: any) => {
           if(this.data[table]) {
-            this.data[table] = this.data[table].filter(r => r[col] !== val);
+            this.data[table] = this.data[table].filter((r: any) => r[col] !== val);
           }
           return Promise.resolve({ data: [], error: null });
         }
       })
     };
   }
+  
   channel() { 
     const mockChannel = {
       on: () => mockChannel,
@@ -73,13 +76,16 @@ class MockSupabaseClient {
     };
     return mockChannel; 
   }
+  
   removeChannel() {}
 }
 
 // Logica di selezione client:
 // 1. Se abbiamo il pacchetto 'supabase-js' E le chiavi, crea il client vero.
 // 2. Altrimenti usa il Mock.
-let supabase;
+// FIX: Aggiunto tipo 'any' esplicito per evitare errori TypeScript
+let supabase: any;
+
 // @ts-ignore
 if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
   // @ts-ignore
@@ -276,7 +282,8 @@ export default function App() {
     const { data: classesData } = await supabase.from('classes').select('*');
     const { data: studentsData } = await supabase.from('students').select('*');
     
-    if (classesData) setClasses(classesData.sort((a,b) => a.name.localeCompare(b.name)));
+    // FIX: Aggiunto tipo esplicito (any) ai parametri del sort
+    if (classesData) setClasses(classesData.sort((a: any, b: any) => a.name.localeCompare(b.name)));
     if (studentsData) setStudents(studentsData);
     setLoading(false);
   };

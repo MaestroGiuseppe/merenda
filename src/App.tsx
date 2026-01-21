@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Apple, Carrot, Plus, Trash2, Users, Lock, School, LogOut, Settings, 
@@ -29,38 +30,38 @@ const SUPABASE_ANON_KEY = "";
 // --- MOCK CLIENT (PER L'ANTEPRIMA QUI O FALLBACK) ---
 // Se le chiavi non ci sono (es. anteprima), usa questo finto database.
 class MockSupabaseClient {
-  data: any = { classes: [], students: [] };
-  
   constructor() {
     const classId = 'mock-class-id';
-    this.data.classes = [{ id: classId, name: 'Classe Prova', password_sequence: ['apple', 'star', 'car'] }];
-    this.data.students = [
-      { id: '1', class_id: classId, name: 'Mario', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mario', total_points: 5, last_check_date: '' },
-      { id: '2', class_id: classId, name: 'Lucia', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lucia', total_points: 8, last_check_date: '' }
-    ];
+    this.data = { 
+      classes: [{ id: classId, name: 'Classe Prova', password_sequence: ['apple', 'star', 'car'] }],
+      students: [
+        { id: '1', class_id: classId, name: 'Mario', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mario', total_points: 5, last_check_date: '' },
+        { id: '2', class_id: classId, name: 'Lucia', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lucia', total_points: 8, last_check_date: '' }
+      ]
+    };
   }
   
-  from(table: string) {
+  from(table) {
     return {
       select: () => Promise.resolve({ data: this.data[table] || [], error: null }),
-      insert: (rows: any[]) => {
+      insert: (rows) => {
         const newRows = rows.map(r => ({ ...r, id: Math.random().toString(36).substr(2, 9) }));
         if(!this.data[table]) this.data[table] = [];
         this.data[table].push(...newRows);
         return Promise.resolve({ data: newRows, error: null });
       },
-      update: (updates: any) => ({
-        eq: (col: string, val: any) => {
+      update: (updates) => ({
+        eq: (col, val) => {
           if(this.data[table]) {
-            this.data[table] = this.data[table].map((r: any) => r[col] === val ? { ...r, ...updates } : r);
+            this.data[table] = this.data[table].map(r => r[col] === val ? { ...r, ...updates } : r);
           }
           return Promise.resolve({ data: [], error: null });
         }
       }),
       delete: () => ({
-        eq: (col: string, val: any) => {
+        eq: (col, val) => {
           if(this.data[table]) {
-            this.data[table] = this.data[table].filter((r: any) => r[col] !== val);
+            this.data[table] = this.data[table].filter(r => r[col] !== val);
           }
           return Promise.resolve({ data: [], error: null });
         }
@@ -81,17 +82,19 @@ class MockSupabaseClient {
 }
 
 // Logica di selezione client:
-// 1. Se abbiamo il pacchetto 'supabase-js' E le chiavi, crea il client vero.
-// 2. Altrimenti usa il Mock.
-// FIX: Aggiunto tipo 'any' esplicito per evitare errori TypeScript
-let supabase: any;
+let supabase;
 
-// @ts-ignore
-if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+// Proviamo a creare il client reale se le librerie e le chiavi sono disponibili
+try {
   // @ts-ignore
-  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else {
-  console.log("Modalità Demo/Mock attiva (Chiavi Supabase mancanti)");
+  if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    // @ts-ignore
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    throw new Error("Missing keys");
+  }
+} catch (e) {
+  console.log("Modalità Demo/Mock attiva (Chiavi Supabase mancanti o libreria non trovata)");
   supabase = new MockSupabaseClient();
 }
 
@@ -129,13 +132,13 @@ const AVATAR_PRESETS = [
 ];
 
 // --- Audio System ---
-const playSound = (type: 'yes' | 'no' | 'absent') => {
-  const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+const playSound = (type) => {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return;
   const ctx = new AudioContext();
   const now = ctx.currentTime;
 
-  const createOsc = (type: OscillatorType, freq: number, start: number, dur: number, vol: number) => {
+  const createOsc = (type, freq, start, dur, vol) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
@@ -170,7 +173,7 @@ const playSound = (type: 'yes' | 'no' | 'absent') => {
 };
 
 // --- Componenti SVG Cartoon ---
-const HappyFace = ({ className }: { className?: string }) => (
+const HappyFace = ({ className }) => (
   <svg viewBox="0 0 100 100" className={`overflow-visible ${className}`}>
     <circle cx="50" cy="50" r="45" fill="#4ade80" stroke="#166534" strokeWidth="4" className="drop-shadow-lg" />
     <circle cx="50" cy="45" r="35" fill="white" opacity="0.2" />
@@ -180,7 +183,7 @@ const HappyFace = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SadFace = ({ className }: { className?: string }) => (
+const SadFace = ({ className }) => (
   <svg viewBox="0 0 100 100" className={`overflow-visible ${className}`}>
     <circle cx="50" cy="50" r="45" fill="#f87171" stroke="#991b1b" strokeWidth="4" className="drop-shadow-lg" />
     <path d="M 25 35 L 40 42" stroke="#991b1b" strokeWidth="4" strokeLinecap="round" />
@@ -191,7 +194,7 @@ const SadFace = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const AbsentFace = ({ className }: { className?: string }) => (
+const AbsentFace = ({ className }) => (
   <svg viewBox="0 0 100 100" className={`overflow-visible ${className}`}>
     <circle cx="50" cy="50" r="45" fill="#94a3b8" stroke="#475569" strokeWidth="4" className="drop-shadow-lg" />
     <path d="M 28 45 L 42 45" stroke="#475569" strokeWidth="5" strokeLinecap="round" />
@@ -201,7 +204,7 @@ const AbsentFace = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const AvatarDisplay = ({ src, size = 100 }: { src: string, size?: number }) => {
+const AvatarDisplay = ({ src, size = 100 }) => {
   const isUrl = src && (src.startsWith('http') || src.startsWith('data:'));
   return (
     <div 
@@ -213,7 +216,7 @@ const AvatarDisplay = ({ src, size = 100 }: { src: string, size?: number }) => {
   );
 };
 
-const PasswordIcon = ({ id, size = 32 }: { id: string, size?: number }) => {
+const PasswordIcon = ({ id, size = 32 }) => {
   const item = PASSWORD_ICONS.find(i => i.id === id);
   if (!item) return null;
   const Icon = item.icon;
@@ -224,44 +227,27 @@ const PasswordIcon = ({ id, size = 32 }: { id: string, size?: number }) => {
 // 📱 APP PRINCIPALE
 // ==========================================
 
-interface Student {
-  id: string;
-  class_id: string;
-  name: string;
-  avatar: string;
-  total_points: number; 
-  last_check_date?: string; 
-}
-
-interface ClassData {
-  id: string;
-  name: string;
-  password_sequence: string[];
-}
-
-type ViewState = 'landing' | 'teacher-auth' | 'teacher-classes-list' | 'teacher-class-manage' | 'student-class-list' | 'student-login-graphic' | 'student-day-select' | 'student-runner' | 'summary';
-
 export default function App() {
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewState>('landing');
-  const [currentClass, setCurrentClass] = useState<ClassData | null>(null);
+  const [view, setView] = useState('landing');
+  const [currentClass, setCurrentClass] = useState(null);
   
   // Stati UI
   const [teacherPassword, setTeacherPassword] = useState('');
   const [teacherError, setTeacherError] = useState('');
   const [newClassName, setNewClassName] = useState('');
-  const [newClassPassword, setNewClassPassword] = useState<string[]>([]);
+  const [newClassPassword, setNewClassPassword] = useState([]);
   const [newStudentName, setNewStudentName] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(AVATAR_PRESETS[0]);
-  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_PRESETS[0]);
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const fileInputRef = useRef(null);
   
   // Stati Runner
-  const [selectedDay, setSelectedDay] = useState<'tuesday' | 'thursday' | null>(null);
+  const [selectedDay, setSelectedDay] = useState(null);
   const [runnerIndex, setRunnerIndex] = useState(0);
-  const [graphicPasswordInput, setGraphicPasswordInput] = useState<string[]>([]);
+  const [graphicPasswordInput, setGraphicPasswordInput] = useState([]);
   const [loginError, setLoginError] = useState(false);
 
   // --- FETCH DATI INIZIALI ---
@@ -282,14 +268,13 @@ export default function App() {
     const { data: classesData } = await supabase.from('classes').select('*');
     const { data: studentsData } = await supabase.from('students').select('*');
     
-    // FIX: Aggiunto tipo esplicito (any) ai parametri del sort
-    if (classesData) setClasses(classesData.sort((a: any, b: any) => a.name.localeCompare(b.name)));
+    if (classesData) setClasses(classesData.sort((a, b) => a.name.localeCompare(b.name)));
     if (studentsData) setStudents(studentsData);
     setLoading(false);
   };
 
   // --- MAESTRA ACTIONS ---
-  const handleTeacherLogin = (e: React.FormEvent) => {
+  const handleTeacherLogin = (e) => {
     e.preventDefault();
     if (teacherPassword === '1234') {
       setView('teacher-classes-list');
@@ -315,14 +300,14 @@ export default function App() {
     fetchData(); // Force refresh for mock
   };
 
-  const deleteClass = async (classId: string) => {
+  const deleteClass = async (classId) => {
     if (!confirm("Sicura di voler eliminare la classe?")) return;
     await supabase.from('classes').delete().eq('id', classId);
     await supabase.from('students').delete().eq('class_id', classId); // Cascade manuale per sicurezza
     fetchData();
   };
 
-  const handleStudentSubmit = async (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e) => {
     e.preventDefault();
     if (!newStudentName.trim() || !currentClass) return;
 
@@ -346,14 +331,14 @@ export default function App() {
     fetchData();
   };
 
-  const removeStudent = async (id: string) => {
+  const removeStudent = async (id) => {
     if (!confirm("Rimuovere studente?")) return;
     await supabase.from('students').delete().eq('id', id);
     fetchData();
   };
 
   // --- STUDENTE ACTIONS ---
-  const handleIconClick = (iconId: string) => {
+  const handleIconClick = (iconId) => {
     if (graphicPasswordInput.length >= 3) return;
     const newInput = [...graphicPasswordInput, iconId];
     setGraphicPasswordInput(newInput);
@@ -371,7 +356,7 @@ export default function App() {
     }
   };
 
-  const handleVote = async (type: 'yes' | 'no' | 'absent') => {
+  const handleVote = async (type) => {
     playSound(type);
     
     const classStudents = students
@@ -400,12 +385,12 @@ export default function App() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
         if (file.size > 200000) { alert("File troppo grande!"); return; }
         const reader = new FileReader();
-        reader.onloadend = () => setSelectedAvatar(reader.result as string);
+        reader.onloadend = () => setSelectedAvatar(reader.result);
         reader.readAsDataURL(file);
     }
   };

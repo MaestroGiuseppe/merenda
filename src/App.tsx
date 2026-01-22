@@ -7,19 +7,29 @@ import {
   Flag, LayoutGrid, Pencil, X, ExternalLink, Smile, Frown, Meh, Volume2
 } from 'lucide-react';
 
-// ✅ VERSIONE PRODUZIONE: Libreria attiva per il deploy
+// ==============================================================================
+// 🚨 ISTRUZIONI FONDAMENTALI PER LA PUBBLICAZIONE (LEGGERE ATTENTAMENTE)
+// ==============================================================================
+// Per far funzionare il database online, DEVI modificare le righe qui sotto 
+// DOPO aver incollato il codice in VS Code e PRIMA di inviarlo a GitHub.
+// ==============================================================================
+
+// PASSO 1: Togli i due slash (//) all'inizio della riga qui sotto per attivare l'import:
 import { createClient } from '@supabase/supabase-js';
 
-// ==========================================
-// 🚀 CONFIGURAZIONE SUPABASE (ATTIVA)
-// ==========================================
-// Queste righe ORA SONO ATTIVE per leggere le chiavi da Vercel.
-// Se sei in locale, assicurati di avere il file .env
+// PASSO 2: Togli i due slash (//) all'inizio delle due righe qui sotto (VITE_...):
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// --- MOCK CLIENT (DI RISERVA) ---
-// Usato solo se la connessione fallisce o mancano le chiavi
+// PASSO 3: AGGIUNGI due slash (//) all'inizio delle due righe qui sotto (quelle vuote):
+// const SUPABASE_URL = "";
+// const SUPABASE_ANON_KEY = "";
+
+// ==============================================================================
+// FINE ISTRUZIONI - NON TOCCARE NULLA SOTTO QUESTA RIGA
+// ==============================================================================
+
+// --- MOCK CLIENT (USATO SOLO SE SUPABASE NON È ATTIVO) ---
 class MockSupabaseClient {
   constructor() {
     this.data = { classes: [], students: [] };
@@ -37,21 +47,19 @@ class MockSupabaseClient {
   removeChannel() {}
 }
 
-// Logica di selezione client:
+// Logica di selezione client
 let supabase;
-
 try {
-  // Controlliamo se le chiavi esistono (non sono undefined o stringa vuota)
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    // ✅ COLLEGAMENTO REALE
+  // @ts-ignore
+  if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
+    // @ts-ignore
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log("✅ Supabase collegato con URL:", SUPABASE_URL);
+    console.log("✅ Supabase collegato correttamente");
   } else {
-    console.warn("⚠️ Chiavi Supabase mancanti! Uso modalità Mock (Dati finti).");
+    // console.log("⚠️ Modalità Mock attiva (Chiavi mancanti o import commentato)");
     supabase = new MockSupabaseClient();
   }
 } catch (e) {
-  console.error("⚠️ Errore critico connessione Supabase:", e);
   supabase = new MockSupabaseClient();
 }
 

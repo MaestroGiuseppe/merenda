@@ -7,23 +7,27 @@ import {
   Flag, LayoutGrid, Pencil, X, ExternalLink, Smile, Frown, Meh, Volume2
 } from 'lucide-react';
 
-// NOTA PER LA PUBBLICAZIONE:
-// Quando scaricherai questo codice sul tuo PC, dovrai installare la libreria supabase:
-// npm install @supabase/supabase-js
-// E poi scommentare la riga qui sotto:
+// ==============================================================================
+// ⚠️ ISTRUZIONI PER LA PUBBLICAZIONE (LEGGERE BENE)
+// ==============================================================================
+// Quando copierai questo codice su GitHub/VS Code per la versione finale:
+// 1. Togli i due slash "//" davanti a "import { createClient }..." qui sotto.
+// 2. Togli i due slash "//" davanti alle costanti SUPABASE_URL e SUPABASE_ANON_KEY con "import.meta..."
+// 3. Metti i due slash "//" davanti alle versioni con le virgolette vuote "".
+// ==============================================================================
+
+// 1. SCOMMENTA QUESTA RIGA PER LA VERSIONE FINALE:
 // import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
 // 🚀 CONFIGURAZIONE SUPABASE
 // ==========================================
 
-// 1. QUANDO PUBBLICHI SU VERCEL: 
-// Togli i commenti "//" dalle due righe qui sotto per attivare il database vero.
+// 2. SCOMMENTA QUESTE DUE RIGHE PER LA VERSIONE FINALE (Vercel):
 // const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 // const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 2. PER ORA (ANTEPRIMA/TEST):
-// Lasciamo vuoto per usare il simulatore (Mock) ed evitare errori.
+// 3. COMMENTA QUESTE DUE RIGHE PER LA VERSIONE FINALE (servono solo qui per l'anteprima):
 const SUPABASE_URL = ""; 
 const SUPABASE_ANON_KEY = "";
 
@@ -84,14 +88,14 @@ class MockSupabaseClient {
 // Logica di selezione client:
 let supabase;
 
-// Proviamo a creare il client reale se le librerie e le chiavi sono disponibili
 try {
   // @ts-ignore
   if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
     // @ts-ignore
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log("✅ Supabase collegato correttamente!");
   } else {
-    throw new Error("Missing keys");
+    throw new Error("Chiavi mancanti");
   }
 } catch (e) {
   console.log("Modalità Demo/Mock attiva (Chiavi Supabase mancanti o libreria non trovata)");
@@ -252,24 +256,39 @@ export default function App() {
 
   // --- FETCH DATI INIZIALI ---
   useEffect(() => {
-    fetchData();
-    // Setup Realtime Subscription
-    if (supabase && typeof supabase.channel === 'function' && SUPABASE_URL) {
-      const channel = supabase.channel('db-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchData)
-        .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
+    // Controllo speciale per link maestra (es. miosito.com/?p=maestra)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('p') === 'maestra') {
+      setView('teacher-auth');
     }
+
+    const initData = async () => {
+      if (supabase && typeof supabase.from === 'function') {
+        fetchData();
+        // Setup Realtime Subscription
+        if (typeof supabase.channel === 'function') {
+          const channel = supabase.channel('db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchData)
+            .subscribe();
+          return () => { supabase.removeChannel(channel); };
+        }
+      } else {
+        setLoading(false); // Sblocco se supabase non c'è
+      }
+    };
+    
+    initData();
   }, []);
 
   const fetchData = async () => {
-    const { data: classesData } = await supabase.from('classes').select('*');
-    const { data: studentsData } = await supabase.from('students').select('*');
-    
-    if (classesData) setClasses(classesData.sort((a, b) => a.name.localeCompare(b.name)));
-    if (studentsData) setStudents(studentsData);
+    try {
+      const { data: classesData } = await supabase.from('classes').select('*');
+      const { data: studentsData } = await supabase.from('students').select('*');
+      
+      if (classesData) setClasses(classesData.sort((a, b) => a.name.localeCompare(b.name)));
+      if (studentsData) setStudents(studentsData);
+    } catch(e) { console.error("Errore fetch:", e); }
     setLoading(false);
   };
 
@@ -297,13 +316,12 @@ export default function App() {
     }]);
     setNewClassName('');
     setNewClassPassword([]);
-    fetchData(); // Force refresh for mock
+    fetchData(); 
   };
 
   const deleteClass = async (classId) => {
     if (!confirm("Sicura di voler eliminare la classe?")) return;
     await supabase.from('classes').delete().eq('id', classId);
-    await supabase.from('students').delete().eq('class_id', classId); // Cascade manuale per sicurezza
     fetchData();
   };
 
@@ -400,21 +418,35 @@ export default function App() {
 
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-[#F0F8FF] flex flex-col items-center justify-center p-6 gap-8 font-sans bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+      <div className="min-h-screen bg-[#F0F8FF] flex flex-col items-center justify-center p-6 gap-8 font-sans bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative">
+        {/* Pulsante Segreto Maestra */}
+        <button 
+          onClick={() => setView('teacher-auth')} 
+          className="absolute top-4 right-4 text-slate-200 hover:text-slate-400 p-2"
+          title="Area Maestra (Segreta)"
+        >
+          <Lock size={20} />
+        </button>
+
         <div className="bg-yellow-400 p-8 rounded-[3rem] shadow-[0_15px_0_rgba(0,0,0,0.1)] rotate-[-2deg] mb-8 border-4 border-slate-900">
             <h1 className="text-5xl md:text-7xl font-black text-slate-900 text-center tracking-tight leading-none">
             Merenda<br/>
             <span className="text-white text-6xl md:text-8xl drop-shadow-[4px_4px_0_#000] stroke-black" style={{WebkitTextStroke: "3px black"}}>CHALLENGE</span>
             </h1>
         </div>
-        <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
-          <button onClick={() => setView('student-class-list')} className="group bg-white border-4 border-slate-900 rounded-[2rem] p-8 flex flex-col items-center gap-4 shadow-[8px_8px_0_#3b82f6] hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none transition-all">
-            <div className="bg-blue-100 p-6 rounded-full border-4 border-slate-900 group-hover:bg-blue-200 transition-colors"><Users size={64} className="text-blue-600" /></div>
-            <div className="text-center"><h2 className="text-3xl font-black text-slate-900 uppercase">Siamo la Classe</h2></div>
-          </button>
-          <button onClick={() => setView('teacher-auth')} className="group bg-white border-4 border-slate-900 rounded-[2rem] p-8 flex flex-col items-center gap-4 shadow-[8px_8px_0_#f59e0b] hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none transition-all">
-            <div className="bg-yellow-100 p-6 rounded-full border-4 border-slate-900 group-hover:bg-yellow-200 transition-colors"><School size={64} className="text-yellow-600" /></div>
-            <div className="text-center"><h2 className="text-3xl font-black text-slate-900 uppercase">Area Maestra</h2></div>
+        
+        <div className="w-full max-w-md">
+          <button 
+            onClick={() => setView('student-class-list')}
+            className="w-full group bg-white border-4 border-slate-900 rounded-[2rem] p-8 flex flex-col items-center gap-4 shadow-[8px_8px_0_#3b82f6] hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none transition-all"
+          >
+            <div className="bg-blue-100 p-6 rounded-full border-4 border-slate-900 group-hover:bg-blue-200 transition-colors">
+              <Users size={64} className="text-blue-600" />
+            </div>
+            <div className="text-center">
+              <h2 className="text-3xl font-black text-slate-900 uppercase">Siamo la Classe</h2>
+              <p className="text-slate-500 font-bold">Entra nel gioco! 🚀</p>
+            </div>
           </button>
         </div>
       </div>

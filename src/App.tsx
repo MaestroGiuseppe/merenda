@@ -7,81 +7,33 @@ import {
   Flag, LayoutGrid, Pencil, X, ExternalLink, Smile, Frown, Meh, Volume2
 } from 'lucide-react';
 
-// ==============================================================================
-// ⚠️ ISTRUZIONI PER LA PUBBLICAZIONE (LEGGERE BENE)
-// ==============================================================================
-// Quando copierai questo codice su GitHub/VS Code per la versione finale:
-// 1. Togli i due slash "//" davanti a "import { createClient }..." qui sotto.
-// 2. Togli i due slash "//" davanti alle costanti SUPABASE_URL e SUPABASE_ANON_KEY con "import.meta..."
-// 3. Metti i due slash "//" davanti alle versioni con le virgolette vuote "".
-// ==============================================================================
-
-// 1. SCOMMENTA QUESTA RIGA PER LA VERSIONE FINALE:
-// import { createClient } from '@supabase/supabase-js';
+// ✅ VERSIONE PRODUZIONE: Libreria attiva per il deploy
+import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
-// 🚀 CONFIGURAZIONE SUPABASE
+// 🚀 CONFIGURAZIONE SUPABASE (ATTIVA)
 // ==========================================
+// Queste righe ORA SONO ATTIVE per leggere le chiavi da Vercel.
+// Se sei in locale, assicurati di avere il file .env
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 2. SCOMMENTA QUESTE DUE RIGHE PER LA VERSIONE FINALE (Vercel):
-// const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-// const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// 3. COMMENTA QUESTE DUE RIGHE PER LA VERSIONE FINALE (servono solo qui per l'anteprima):
-const SUPABASE_URL = ""; 
-const SUPABASE_ANON_KEY = "";
-
-// --- MOCK CLIENT (PER L'ANTEPRIMA QUI O FALLBACK) ---
-// Se le chiavi non ci sono (es. anteprima), usa questo finto database.
+// --- MOCK CLIENT (DI RISERVA) ---
+// Usato solo se la connessione fallisce o mancano le chiavi
 class MockSupabaseClient {
   constructor() {
-    const classId = 'mock-class-id';
-    this.data = { 
-      classes: [{ id: classId, name: 'Classe Prova', password_sequence: ['apple', 'star', 'car'] }],
-      students: [
-        { id: '1', class_id: classId, name: 'Mario', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Mario', total_points: 5, last_check_date: '' },
-        { id: '2', class_id: classId, name: 'Lucia', avatar: 'https://api.dicebear.com/7.x/fun-emoji/svg?seed=Lucia', total_points: 8, last_check_date: '' }
-      ]
-    };
+    this.data = { classes: [], students: [] };
   }
-  
-  from(table) {
-    return {
-      select: () => Promise.resolve({ data: this.data[table] || [], error: null }),
-      insert: (rows) => {
-        const newRows = rows.map(r => ({ ...r, id: Math.random().toString(36).substr(2, 9) }));
-        if(!this.data[table]) this.data[table] = [];
-        this.data[table].push(...newRows);
-        return Promise.resolve({ data: newRows, error: null });
-      },
-      update: (updates) => ({
-        eq: (col, val) => {
-          if(this.data[table]) {
-            this.data[table] = this.data[table].map(r => r[col] === val ? { ...r, ...updates } : r);
-          }
-          return Promise.resolve({ data: [], error: null });
-        }
-      }),
-      delete: () => ({
-        eq: (col, val) => {
-          if(this.data[table]) {
-            this.data[table] = this.data[table].filter(r => r[col] !== val);
-          }
-          return Promise.resolve({ data: [], error: null });
-        }
-      })
-    };
+  from(table) { 
+    return { 
+      select: () => Promise.resolve({ data: [], error: null }),
+      insert: () => Promise.resolve({ data: [], error: null }),
+      update: () => Promise.resolve({ data: [], error: null }),
+      delete: () => Promise.resolve({ data: [], error: null }),
+      eq: () => ({ delete: () => Promise.resolve({}), update: () => Promise.resolve({}) })
+    }; 
   }
-  
-  channel() { 
-    const mockChannel = {
-      on: () => mockChannel,
-      subscribe: () => mockChannel,
-      unsubscribe: () => {}
-    };
-    return mockChannel; 
-  }
-  
+  channel() { return { on: () => ({ subscribe: () => {} }), unsubscribe: () => {} }; }
   removeChannel() {}
 }
 
@@ -89,16 +41,17 @@ class MockSupabaseClient {
 let supabase;
 
 try {
-  // @ts-ignore
-  if (typeof createClient !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    // @ts-ignore
+  // Controlliamo se le chiavi esistono (non sono undefined o stringa vuota)
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    // ✅ COLLEGAMENTO REALE
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log("✅ Supabase collegato correttamente!");
+    console.log("✅ Supabase collegato con URL:", SUPABASE_URL);
   } else {
-    throw new Error("Chiavi mancanti");
+    console.warn("⚠️ Chiavi Supabase mancanti! Uso modalità Mock (Dati finti).");
+    supabase = new MockSupabaseClient();
   }
 } catch (e) {
-  console.log("Modalità Demo/Mock attiva (Chiavi Supabase mancanti o libreria non trovata)");
+  console.error("⚠️ Errore critico connessione Supabase:", e);
   supabase = new MockSupabaseClient();
 }
 
@@ -263,10 +216,11 @@ export default function App() {
     }
 
     const initData = async () => {
-      if (supabase && typeof supabase.from === 'function') {
+      // Se supabase è null o mock, prova comunque a caricare
+      if (supabase) {
         fetchData();
         // Setup Realtime Subscription
-        if (typeof supabase.channel === 'function') {
+        if (typeof supabase.channel === 'function' && SUPABASE_URL) {
           const channel = supabase.channel('db-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, fetchData)
@@ -274,7 +228,7 @@ export default function App() {
           return () => { supabase.removeChannel(channel); };
         }
       } else {
-        setLoading(false); // Sblocco se supabase non c'è
+        setLoading(false);
       }
     };
     

@@ -6,9 +6,8 @@ export default {
   ],
   theme: {
     extend: {
-      animation: {
-        'bounce-slow': 'bounce 3s infinite',
-      }
+      // Qui puoi estendere il tema se necessario
+      // Le animazioni personalizzate sono già nel CSS, quindi qui non servono
     },
   },
   plugins: [],

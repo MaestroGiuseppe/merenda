@@ -2,46 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Aggiungi qui le animazioni personalizzate usate in App.tsx */
+/* --- Animazioni e Stili Personalizzati --- */
 
-@layer utilities {
-  /* Animazione per l'errore password */
-  .animate-shake {
-    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-  }
-
-  /* Animazione per l'entrata degli elementi */
-  .animate-fade-in {
-    animation: fadeIn 0.8s ease-out forwards;
-  }
-  
-  /* Animazione rimbalzo lento */
-  .animate-bounce-slow {
-    animation: bounce 3s infinite;
-  }
-
-  /* Scrollbar personalizzata per la classifica */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(15, 23, 42, 0.2);
-    border-radius: 20px;
-    border: 3px solid transparent;
-    background-clip: content-box;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(15, 23, 42, 0.4);
-  }
+/* Animazione per l'errore password */
+.animate-shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
-/* Keyframes necessari */
+/* Animazione per l'entrata degli elementi */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* Animazione rimbalzo lento */
+/* Usiamo un nome custom per evitare conflitti con Tailwind */
+.animate-bounce-slow {
+  animation: bounce-custom 3s infinite;
+}
+
+/* Scrollbar personalizzata per la classifica */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(15, 23, 42, 0.2);
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(15, 23, 42, 0.4);
+}
+
+/* --- Keyframes --- */
+
 @keyframes shake {
   10%, 90% { transform: translate3d(-1px, 0, 0); }
   20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -52,4 +52,15 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce-custom {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
 }
